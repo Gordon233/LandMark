@@ -1,0 +1,31 @@
+# Xcode user data
+*.xcuserdata
+xcuserdata/
+*.xcuserdatad/
+
+# output of build
+build/
+DerivedData/
+*.ipa
+*.app
+*.dSYM.zip
+*.dSYM
+
+# temporary files
+.DS_Store
+*.swp
+*.lock
+*~
+
+# CocoaPods
+Pods/
+Podfile.lock
+*.xcworkspace
+
+# Carthage
+Carthage/Build/
+
+# Swift Package Manager
+.swiftpm/
+Packages/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/

@@ -30,7 +30,7 @@ protocol APIEndpoint {
 
 // MARK: - Default Endpoint Implementation
 extension APIEndpoint {
-    var baseURL: String { "https://f620cf495fcd.ngrok-free.app" }
+    var baseURL: String { "https://e2f5f5319d36.ngrok-free.app" }
     var headers: [String: String] {
         [
             "Content-Type": "application/json",
@@ -39,7 +39,21 @@ extension APIEndpoint {
     }
 
     var url: URL? {
-        URL(string: baseURL + path)
+        let fullURL = baseURL + path
+        print("🌐 [APIClient] Creating URL: \(fullURL)")
+
+        guard let url = URL(string: fullURL) else {
+            print("❌ [APIClient] Failed to create URL from string: \(fullURL)")
+            return nil
+        }
+
+        print("✅ [APIClient] URL created successfully")
+        print("   - Host: \(url.host ?? "nil")")
+        print("   - Port: \(url.port?.description ?? "nil")")
+        print("   - Path: \(url.path)")
+        print("   - Scheme: \(url.scheme ?? "nil")")
+
+        return url
     }
 }
 
@@ -70,9 +84,11 @@ final class APIClient: APIClientProtocol {
     // MARK: - GET Request
     func request<T: Decodable>(_ endpoint: APIEndpoint) async throws -> T {
         guard let url = endpoint.url else {
+            print("❌ [APIClient] Invalid URL for endpoint: \(endpoint.path)")
             throw NetworkError.invalidURL
         }
 
+        print("📤 [APIClient] GET Request to: \(url)")
         let request = buildRequest(url: url, method: endpoint.method, headers: endpoint.headers)
         return try await performRequest(request)
     }
@@ -80,14 +96,21 @@ final class APIClient: APIClientProtocol {
     // MARK: - POST/PUT/PATCH Request with Body
     func request<Body: Encodable, Response: Decodable>(_ endpoint: APIEndpoint, body: Body) async throws -> Response {
         guard let url = endpoint.url else {
+            print("❌ [APIClient] Invalid URL for endpoint: \(endpoint.path)")
             throw NetworkError.invalidURL
         }
 
+        print("📤 [APIClient] \(endpoint.method.rawValue) Request to: \(url)")
         var request = buildRequest(url: url, method: endpoint.method, headers: endpoint.headers)
 
         do {
-            request.httpBody = try encoder.encode(body)
+            let bodyData = try encoder.encode(body)
+            request.httpBody = bodyData
+            if let bodyString = String(data: bodyData, encoding: .utf8) {
+                print("📦 [APIClient] Request body: \(bodyString)")
+            }
         } catch {
+            print("❌ [APIClient] Encoding error: \(error)")
             throw NetworkError.encodingError(error)
         }
 
@@ -98,37 +121,76 @@ final class APIClient: APIClientProtocol {
     private func buildRequest(url: URL, method: HTTPMethod, headers: [String: String]) -> URLRequest {
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
+        request.timeoutInterval = 30.0
+
+        print("🔧 [APIClient] Building request:")
+        print("   Method: \(method.rawValue)")
+        print("   URL: \(url)")
+        print("   Headers:")
 
         headers.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
+            print("     \(key): \(value)")
         }
 
         return request
     }
 
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
+        print("🚀 [APIClient] Performing request...")
+
+        // Add additional debugging for the request
+        if let url = request.url {
+            print("🔍 [APIClient] Request URL components:")
+            print("   - Full URL: \(url.absoluteString)")
+            print("   - Host: \(url.host ?? "nil")")
+            print("   - Port: \(url.port?.description ?? "default")")
+        }
+
         do {
             let (data, response) = try await session.data(for: request)
 
+            print("📥 [APIClient] Received response")
+
             guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ [APIClient] Invalid HTTP response")
                 throw NetworkError.badStatusCode(0)
             }
 
+            print("📊 [APIClient] Status code: \(httpResponse.statusCode)")
+            print("📋 [APIClient] Response headers: \(httpResponse.allHeaderFields)")
+
             guard 200...299 ~= httpResponse.statusCode else {
+                print("❌ [APIClient] Bad status code: \(httpResponse.statusCode)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("📄 [APIClient] Error response body: \(responseString)")
+                }
                 throw NetworkError.badStatusCode(httpResponse.statusCode)
             }
 
             guard !data.isEmpty else {
+                print("❌ [APIClient] No data received")
                 throw NetworkError.noData
             }
 
-            return try decoder.decode(T.self, from: data)
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📄 [APIClient] Response body: \(responseString)")
+            }
+
+            print("🔄 [APIClient] Decoding response...")
+            let result = try decoder.decode(T.self, from: data)
+            print("✅ [APIClient] Successfully decoded response")
+            return result
 
         } catch let error as NetworkError {
+            print("❌ [APIClient] NetworkError: \(error.localizedDescription)")
             throw error
         } catch let decodingError as DecodingError {
+            print("❌ [APIClient] DecodingError: \(decodingError)")
             throw NetworkError.decodingError(decodingError)
         } catch {
+            print("❌ [APIClient] General error: \(error.localizedDescription)")
+            print("❌ [APIClient] Error type: \(type(of: error))")
             throw NetworkError.networkError(error)
         }
     }

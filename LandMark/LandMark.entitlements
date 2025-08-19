@@ -6,5 +6,12 @@
 	<true/>
 	<key>com.apple.security.files.user-selected.read-only</key>
 	<true/>
+	<!-- macOS应用启用了沙盒（com.apple.security.app-sandbox），但没有网络访问权限。我需要添加网络权限： -->
+	<!-- 允许应用作为网络客户端发起连接 -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	 <!-- 允许应用接收网络连接（虽然这里主要需要client权限） -->
+	<key>com.apple.security.network.server</key>
+	<true/>
 </dict>
 </plist>

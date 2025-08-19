@@ -37,7 +37,9 @@ struct ChatView: View {
                 .focused($isTextFieldFocused)
             }
             .navigationTitle("AI Chat")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Clear", systemImage: "trash") {
